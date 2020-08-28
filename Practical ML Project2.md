@@ -1,0 +1,87 @@
+---
+title: "Practical Machine Learning Project"
+author: "chen"
+date: "8/27/2020"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in the dataset
+```{r}
+library(caret)
+library(ggplot2)
+setwd("~/Coursera class/C8")
+training <- read.csv("./data/pml-training.csv", header=TRUE)
+dim(training)
+testing <- read.csv("./data/pml-testing.csv", header=TRUE)
+dim(testing)
+```
+## Take a look at content of the training data
+```{r}
+table(training$classe)
+str(training)
+```
+## Data Prep
+Split the training further into two parts -training and test.  At the same time exclude all the columns that are mostly NA or irrelevant
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.7, list=FALSE)
+train <- training[inTrain, c(6:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160 )]
+test <- training[-inTrain, c(6:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160 )]
+dim(train)
+dim(test)
+```
+
+## Prep y variable
+Since we will use randomForest, we need to set y variable to factor
+```{r}
+train$classe <- factor(train$classe)
+test$classe <- factor(test$classe)
+```
+
+## Model building
+Use randomForest with 500 trees; Print out variable importance
+
+```{r}
+library(randomForest)
+set.seed(4543)
+modFit.rf <- randomForest(classe ~ ., data=train, ntree=500, keep.forest=TRUE, importance=TRUE)
+modFit.rf
+varImpPlot(modFit.rf)
+```
+## Apply the model to test data
+```{r}
+pred3 <- predict(modFit.rf, newdata=test)
+```
+
+## Model Evaluation
+Look at how accurate the predition is:
+```{r}
+table(pred3, test$classe)
+confusionMatrix(pred3, test$classe)
+```
+
+## Show Tree
+Try to plot a tree using the 3 most important variables
+
+```{r}
+library(partykit)
+train$classe <- factor(train$classe)
+y <- ctree(classe ~ num_window + roll_belt + yaw_belt, data = train)
+plot(y, gp = gpar(fontsize = 6),  
+     inner_panel=node_inner,
+     ip_args=list(
+       abbreviate = TRUE, 
+       id = FALSE)
+)
+```
+
+
+## Finally, predict the actual test cases in quiz
+```{r}
+pred4 <- predict(modFit.rf, newdata=testing)
+pred4
+```
+# got it right 100%
